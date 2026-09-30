@@ -16,14 +16,14 @@ services:
       WG_EASY_API_VERSION: ${WG_EASY_API_VERSION:-15}
       WG_EASY_USER: ${WG_EASY_USER:-}
       WG_EASY_PASSWORD_FILE: /run/secrets/wg_easy_password
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     secrets: [acl_admin_password, wg_easy_password]
     volumes:
       - acl-state:/state
     ports:
       - "127.0.0.1:8080:8080"
     command: ["web"]
+    networks:
+      - wg-easy
 
   acl-enforcer:
     build: .
@@ -47,3 +47,8 @@ secrets:
     file: ./secrets/acl_admin_password
   wg_easy_password:
     file: ./secrets/wg_easy_password
+
+networks:
+  wg-easy:
+    external: true
+    name: wg-easy_wg
