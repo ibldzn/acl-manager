@@ -1,0 +1,83 @@
+{{define "overview"}}{{template "start" .}}
+<p class="intro">Enforcement health and current ACL state.</p>
+<div class="metrics">
+<div class="metric">
+<span>Enforcement</span>
+<strong class="state {{.S.State}}">{{.S.State}}</strong>
+</div>
+<div class="metric">
+<span>Desired revision</span>
+<strong>{{.V.Desired.Revision}}</strong>
+</div>
+<div class="metric">
+<span>Applied revision</span>
+<strong>{{.S.AppliedRevision}}</strong>
+</div>
+<div class="metric">
+<span>Peer sync</span>
+<strong class="state {{.Sync.State}}">{{.Sync.State}}</strong>
+</div>
+<div class="metric">
+<span>Last successful apply</span>
+<strong class="small-value">{{if .S.LastSuccess}}{{.S.LastSuccess}}{{else}}Never{{end}}
+</strong>
+</div>
+<div class="metric">
+<span>Managed peers</span>
+<strong>{{len .V.Peers}}</strong>
+</div>
+<div class="metric">
+<span>Groups</span>
+<strong>{{len .V.Groups}}</strong>
+</div>
+<div class="metric">
+<span>Enabled resources</span>
+<strong>{{.EnabledResources}}</strong>
+</div>
+</div>
+<section class="panel">
+<div class="section-head">
+<h2>Enforcement</h2>
+<form method="post" action="/retry">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<button class="secondary">Reconcile / retry</button>
+</form>
+</div>
+{{if eq .S.State "INACTIVE"}}<p class="notice">ACL Manager is installed but not enforcing rules.</p>{{end}}
+<dl class="facts">
+<div>
+<dt>Current chain</dt>
+<dd>{{if .S.Chain}}<code>{{.S.Chain}}</code>{{else}}None{{end}}
+</dd>
+</div>
+<div>
+<dt>Anchor present</dt>
+<dd>{{if .S.AnchorPresent}}Yes{{else}}No{{end}}
+</dd>
+</div>
+<div>
+<dt>Before wg-easy ACCEPT</dt>
+<dd>{{if .S.AnchorBeforeAccept}}Yes{{else}}No{{end}}
+</dd>
+</div>
+<div>
+<dt>Heartbeat</dt>
+<dd>{{if .S.Heartbeat}}{{.S.Heartbeat}}{{else}}Never{{end}}
+</dd>
+</div>{{if .S.LastError}}<div class="full">
+<dt>Last error</dt>
+<dd class="state ERROR">{{.S.LastError}}</dd>
+</div>{{end}}
+</dl>
+</section>
+{{if not .V.Desired.Activated}}<section class="panel activation">
+<h2>Initial activation</h2>
+<p>Review <a href="/peers">peers</a>, <a href="/resources">resources</a>, and <a href="/policies">policies</a> first. Enabled resources default to DENY after activation.</p>
+<form method="post" action="/activate" class="form-row">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<label>Type ACTIVATE<input name="confirm" required autocomplete="off" placeholder="ACTIVATE">
+</label>
+<button>Activate enforcement</button>
+</form>
+</section>{{end}}
+{{template "end" .}}{{end}}

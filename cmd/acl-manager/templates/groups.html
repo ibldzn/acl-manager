@@ -1,0 +1,83 @@
+{{define "groups"}}{{template "start" .}}<p class="intro">Organize peers into reusable policy subjects.</p>
+<div class="split">
+<section class="panel table-panel">
+<div class="section-head">
+<h2>Groups</h2>
+<span class="muted">{{len .V.Groups}} total</span>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Members</th>
+<th>Policies</th>
+<th>
+</th>
+</tr>
+</thead>
+<tbody>{{range .V.Groups}}<tr>
+<td>
+<strong>{{.Name}}</strong>
+</td>
+<td>{{len .Members}}</td>
+<td>{{groupPolicies $.V.Policies .ID}}</td>
+<td>
+<a class="text-link" href="/groups?id={{.ID}}">Inspect / edit</a>
+</td>
+</tr>{{else}}<tr>
+<td colspan="4" class="empty">No groups yet.</td>
+</tr>{{end}}
+</tbody>
+</table>
+</div>
+</section>
+<aside class="panel side-panel">{{if .Group}}<div class="section-head">
+<h2>{{.Group.Name}}</h2>
+<span class="muted">{{len .Group.Members}} members · {{.GroupPolicies}} policies</span>
+</div>
+<form method="post" action="/groups/save" class="stack-form">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<input type="hidden" name="id" value="{{.Group.ID}}">
+<label>Group name<input name="name" value="{{.Group.Name}}" maxlength="120" required>
+</label>
+<button class="secondary">Save name</button>
+</form>
+<h3>Members</h3>
+<div class="member-list">{{range .Group.Members}}<div>
+<span>{{peer $.V.Peers .}}</span>
+<form method="post" action="/membership">
+<input type="hidden" name="csrf" value="{{$.CSRF}}">
+<input type="hidden" name="group_id" value="{{$.Group.ID}}">
+<input type="hidden" name="peer_id" value="{{.}}">
+<input type="hidden" name="action" value="remove">
+<button class="text-button">Remove</button>
+</form>
+</div>{{else}}<p class="muted">No members.</p>{{end}}
+</div>{{if .UnassignedPeers}}<form method="post" action="/membership" class="stack-form">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<input type="hidden" name="group_id" value="{{.Group.ID}}">
+<input type="hidden" name="action" value="add">
+<label>Add peer<select name="peer_id">{{range .UnassignedPeers}}<option value="{{.ID}}">{{if .Name}}{{.Name}}{{else}}{{.IP}}{{end}} ({{.IP}})</option>{{end}}
+</select>
+</label>
+<button>Add member</button>
+</form>{{else}}<p class="muted">No available peers to add.</p>{{end}}
+<h3>Group policies</h3>
+<p>{{.GroupPolicies}} configured. <a href="/policies">View policies</a>
+</p>
+<form method="post" action="/groups/delete" class="delete-form">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<input type="hidden" name="id" value="{{.Group.ID}}">
+<button class="danger">Delete group</button>
+</form>{{else}}<h2>Create group</h2>
+<p class="muted">Select group to manage its members and policies.</p>
+<form method="post" action="/groups/save" class="stack-form">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<input type="hidden" name="id" value="0">
+<label>Group name<input name="name" maxlength="120" required>
+</label>
+<button>Create group</button>
+</form>{{end}}
+</aside>
+</div>{{template "end" .}}{{end}}

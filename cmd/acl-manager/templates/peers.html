@@ -1,0 +1,68 @@
+{{define "peers"}}{{template "start" .}}<div class="heading-actions">
+<p class="intro">Peers are synchronized from wg-easy and cannot be created here.</p>
+<form method="post" action="/sync">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<button>Synchronize now</button>
+</form>
+</div>
+<section class="panel table-panel">
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>VPN IP</th>
+<th>Public key</th>
+<th>Groups</th>
+<th>Effective access</th>
+<th>Sync status</th>
+<th>Last seen</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>{{range .V.Peers}}<tr>
+<td>
+<strong>{{if .Name}}{{.Name}}{{else}}Unnamed peer{{end}}
+</strong>
+</td>
+<td>
+<code class="ip">{{.IP}}</code>
+</td>
+<td>
+<details>
+<summary>
+<code>{{short .PublicKey}}</code>
+</summary>
+<code class="wrap">{{.PublicKey}}</code>
+</details>
+</td>
+<td>{{range .Groups}}<span class="tag">{{group $.V.Groups .}}</span>{{else}}<span class="muted">—</span>{{end}}
+</td>
+<td>
+<strong>{{index $.Allow .ID}} ALLOW</strong>
+</td>
+<td>
+<span class="state {{.SyncStatus}}">{{if and (eq $.Sync.State "ERROR") (eq .SyncStatus "missing")}}Quarantined{{else}}{{.SyncStatus}}{{end}}
+</span>{{if not .Enabled}}<span class="muted"> · disabled</span>{{end}}
+</td>
+<td class="small-value">{{.LastSeen}}</td>
+<td>
+<details class="row-action">
+<summary>More</summary>
+<p class="muted">Forget removes ACL policies and memberships. wg-easy peer stays. Sync imports peer again with default DENY.</p>
+<form method="post" action="/peers/forget" class="stack-form">
+<input type="hidden" name="csrf" value="{{$.CSRF}}">
+<input type="hidden" name="id" value="{{.ID}}">
+<label>Type peer ID {{.ExternalID}}<input name="confirm" required autocomplete="off">
+</label>
+<button class="danger">Forget ACL record</button>
+</form>
+</details>
+</td>
+</tr>{{else}}<tr>
+<td colspan="8" class="empty">No peers synchronized yet.</td>
+</tr>{{end}}
+</tbody>
+</table>
+</div>
+</section>{{template "end" .}}{{end}}

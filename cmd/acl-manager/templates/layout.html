@@ -1,0 +1,42 @@
+{{define "start"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{.Title}} · WireGuard ACL Manager</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<a class="brand" href="/">WireGuard <strong>ACL Manager</strong>
+</a>
+<nav aria-label="Primary">
+<span class="nav-label">Workspace</span>
+<a href="/" {{if eq .Page "overview"}}aria-current="page"{{end}}>Overview</a>
+<a href="/peers" {{if eq .Page "peers"}}aria-current="page"{{end}}>Peers</a>
+<a href="/groups" {{if eq .Page "groups"}}aria-current="page"{{end}}>Groups</a>
+<a href="/resources" {{if eq .Page "resources"}}aria-current="page"{{end}}>Resources</a>
+<a href="/policies" {{if eq .Page "policies"}}aria-current="page"{{end}}>Policies</a>
+<span class="nav-label system-label">System</span>
+<a href="/diagnostics" {{if eq .Page "diagnostics"}}aria-current="page"{{end}}>Diagnostics</a>
+<a href="/audit" {{if eq .Page "audit"}}aria-current="page"{{end}}>Audit</a>
+</nav>
+<div class="sidebar-state">
+<div>Enforcement <strong class="state {{.S.State}}">{{.S.State}}</strong>
+</div>
+<div>Peer sync <strong class="state {{.Sync.State}}">{{.Sync.State}}</strong>
+</div>
+</div>
+</aside>
+<main class="content">
+<header class="page-header">
+<div>
+<div class="eyebrow">WireGuard ACL Manager</div>
+<h1>{{.Title}}</h1>
+</div>
+</header>{{end}}
+{{define "end"}}</main>
+</div>
+</body>
+</html>{{end}}

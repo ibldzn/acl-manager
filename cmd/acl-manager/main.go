@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -97,8 +96,17 @@ func main() {
 		log.Fatal(e)
 	}
 	go a.syncLoop()
+	mux := a.routes()
+	server := &http.Server{Addr: env("ACL_LISTEN", "127.0.0.1:8080"), Handler: a.auth(mux), ReadHeaderTimeout: 5 * time.Second}
+	log.Fatal(server.ListenAndServe())
+}
+func (a *app) routes() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", a.page)
+	mux.HandleFunc("GET /{$}", a.page)
+	for _, path := range []string{"/peers", "/groups", "/resources", "/policies", "/diagnostics", "/audit"} {
+		mux.HandleFunc("GET "+path, a.page)
+	}
+	mux.HandleFunc("GET /static/app.css", stylesheet)
 	mux.HandleFunc("GET /api/diagnostics", a.diagnostics)
 	mux.HandleFunc("GET /api/audit", a.audit)
 	mux.HandleFunc("POST /sync", a.sync)
@@ -112,8 +120,7 @@ func main() {
 	mux.HandleFunc("POST /resources/delete", a.resourceDelete)
 	mux.HandleFunc("POST /policies/save", a.policySave)
 	mux.HandleFunc("POST /policies/delete", a.policyDelete)
-	server := &http.Server{Addr: env("ACL_LISTEN", "127.0.0.1:8080"), Handler: a.auth(mux), ReadHeaderTimeout: 5 * time.Second}
-	log.Fatal(server.ListenAndServe())
+	return mux
 }
 func (a *app) auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -147,15 +154,15 @@ func id(r *http.Request, key string) (int64, error) {
 	return n, nil
 }
 func fail(w http.ResponseWriter, e error) { http.Error(w, e.Error(), 400) }
-func done(w http.ResponseWriter, r *http.Request, e error) {
+func done(w http.ResponseWriter, r *http.Request, e error, path string) {
 	if e != nil {
 		fail(w, e)
 		return
 	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, path, http.StatusSeeOther)
 }
 func (a *app) sync(w http.ResponseWriter, r *http.Request) {
-	done(w, r, a.doSync(context.Background(), a.user))
+	done(w, r, a.doSync(context.Background(), a.user), "/peers")
 }
 func (a *app) doSync(ctx context.Context, actor string) error {
 	peers, e := a.source.Fetch(ctx)
@@ -226,7 +233,7 @@ func (a *app) peerForget(w http.ResponseWriter, r *http.Request) {
 		_, e := tx.Exec("DELETE FROM peers WHERE id=?", pid)
 		return e
 	})
-	done(w, r, e)
+	done(w, r, e, "/peers")
 }
 func (a *app) activate(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("confirm") != "ACTIVATE" {
@@ -254,14 +261,14 @@ func (a *app) activate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	e = a.store.Change(a.user, "enforcement.activate", "firewall", v.Desired, true, func(tx *sql.Tx) error { _, e := tx.Exec("UPDATE settings SET activated=1 WHERE id=1"); return e })
-	done(w, r, e)
+	done(w, r, e, "/")
 }
 func (a *app) retry(w http.ResponseWriter, r *http.Request) {
 	e := a.store.Publish()
 	if e == nil {
 		e = a.store.Log(a.user, "enforcement.retry", "firewall", nil, nil)
 	}
-	done(w, r, e)
+	done(w, r, e, "/")
 }
 func (a *app) groupSave(w http.ResponseWriter, r *http.Request) {
 	gid, e := id(r, "id")
@@ -299,7 +306,7 @@ func (a *app) groupSave(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	})
-	done(w, r, e)
+	done(w, r, e, "/groups")
 }
 func (a *app) groupDelete(w http.ResponseWriter, r *http.Request) {
 	gid, e := id(r, "id")
@@ -323,7 +330,7 @@ func (a *app) groupDelete(w http.ResponseWriter, r *http.Request) {
 		_, e := tx.Exec("DELETE FROM groups WHERE id=?", gid)
 		return e
 	})
-	done(w, r, e)
+	done(w, r, e, "/groups")
 }
 func (a *app) membership(w http.ResponseWriter, r *http.Request) {
 	pid, e := id(r, "peer_id")
@@ -349,7 +356,7 @@ func (a *app) membership(w http.ResponseWriter, r *http.Request) {
 		_, e := tx.Exec("DELETE FROM memberships WHERE peer_id=? AND group_id=?", pid, gid)
 		return e
 	})
-	done(w, r, e)
+	done(w, r, e, "/groups?id="+strconv.FormatInt(gid, 10))
 }
 func parseResource(r *http.Request) (acl.Resource, error) {
 	id, e := id(r, "id")
@@ -421,7 +428,7 @@ func (a *app) resourceSave(w http.ResponseWriter, r *http.Request) {
 		_, e := tx.Exec("UPDATE resources SET name=?,description=?,destination=?,protocol=?,port_start=?,port_end=?,enabled=? WHERE id=?", res.Name, res.Description, res.Destination, res.Protocol, res.PortStart, res.PortEnd, res.Enabled, res.ID)
 		return e
 	})
-	done(w, r, e)
+	done(w, r, e, "/resources")
 }
 func (a *app) resourceDelete(w http.ResponseWriter, r *http.Request) {
 	rid, e := id(r, "id")
@@ -442,7 +449,7 @@ func (a *app) resourceDelete(w http.ResponseWriter, r *http.Request) {
 		_, e := tx.Exec("DELETE FROM resources WHERE id=?", rid)
 		return e
 	})
-	done(w, r, e)
+	done(w, r, e, "/resources")
 }
 func (a *app) policySave(w http.ResponseWriter, r *http.Request) {
 	pid, e := id(r, "peer_id")
@@ -488,7 +495,7 @@ func (a *app) policySave(w http.ResponseWriter, r *http.Request) {
 		_, e := tx.Exec("INSERT INTO policies(group_id,resource_id,action) VALUES(?,?,?) ON CONFLICT(group_id,resource_id) DO UPDATE SET action=excluded.action", gid, rid, p.Action)
 		return e
 	})
-	done(w, r, e)
+	done(w, r, e, "/policies")
 }
 func (a *app) policyDelete(w http.ResponseWriter, r *http.Request) {
 	policyID, e := id(r, "id")
@@ -503,7 +510,7 @@ func (a *app) policyDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	e = a.store.Change(a.user, "policy.delete", strconv.FormatInt(policyID, 10), p, nil, func(tx *sql.Tx) error { _, e := tx.Exec("DELETE FROM policies WHERE id=?", policyID); return e })
-	done(w, r, e)
+	done(w, r, e, "/policies")
 }
 func (a *app) diagnostics(w http.ResponseWriter, r *http.Request) {
 	v, e := a.store.Snapshot()
@@ -524,126 +531,53 @@ func (a *app) diagnostics(w http.ResponseWriter, r *http.Request) {
 	}{v, acl.StatusForDesired(v.Desired, a.store.StateDir), syncStatus})
 }
 func (a *app) audit(w http.ResponseWriter, r *http.Request) {
-	rows, e := a.store.DB.Query("SELECT at,actor,action,target,before_json,after_json FROM audit ORDER BY id DESC LIMIT 200")
+	out, e := a.auditData()
 	if e != nil {
 		fail(w, e)
 		return
 	}
-	defer rows.Close()
-	type item struct{ At, Actor, Action, Target, Before, After string }
-	out := []item{}
-	for rows.Next() {
-		var x item
-		if e = rows.Scan(&x.At, &x.Actor, &x.Action, &x.Target, &x.Before, &x.After); e != nil {
-			fail(w, e)
-			return
-		}
-		out = append(out, x)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(out)
+}
+
+type auditItem struct{ At, Actor, Action, Target, Before, After string }
+type auditData struct {
+	Admin    []auditItem       `json:"admin"`
+	Enforcer []json.RawMessage `json:"enforcer"`
+}
+
+func (a *app) auditData() (auditData, error) {
+	rows, e := a.store.DB.Query("SELECT at,actor,action,target,before_json,after_json FROM audit ORDER BY id DESC LIMIT 200")
+	if e != nil {
+		return auditData{}, e
 	}
-	var enforcerEvents []json.RawMessage
+	defer rows.Close()
+	out := auditData{Admin: []auditItem{}}
+	for rows.Next() {
+		var x auditItem
+		if e = rows.Scan(&x.At, &x.Actor, &x.Action, &x.Target, &x.Before, &x.After); e != nil {
+			return auditData{}, e
+		}
+		out.Admin = append(out.Admin, x)
+	}
+	if e = rows.Err(); e != nil {
+		return auditData{}, e
+	}
 	if f, readErr := os.Open(filepath.Join(a.store.StateDir, "enforcer-audit.jsonl")); readErr == nil {
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
 			line := append([]byte(nil), scanner.Bytes()...)
 			if json.Valid(line) {
-				enforcerEvents = append(enforcerEvents, json.RawMessage(line))
-				if len(enforcerEvents) > 200 {
-					enforcerEvents = enforcerEvents[1:]
+				out.Enforcer = append(out.Enforcer, json.RawMessage(line))
+				if len(out.Enforcer) > 200 {
+					out.Enforcer = out.Enforcer[1:]
 				}
 			}
 		}
 		if e = scanner.Err(); e != nil {
-			fail(w, e)
-			return
+			return auditData{}, e
 		}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(struct {
-		Admin    []item            `json:"admin"`
-		Enforcer []json.RawMessage `json:"enforcer"`
-	}{out, enforcerEvents})
+	return out, nil
 }
-func (a *app) page(w http.ResponseWriter, r *http.Request) {
-	v, e := a.store.Snapshot()
-	if e != nil {
-		fail(w, e)
-		return
-	}
-	st := acl.StatusForDesired(v.Desired, a.store.StateDir)
-	syncStatus, e := a.store.LastSync()
-	if e != nil {
-		fail(w, e)
-		return
-	}
-	type row struct {
-		Peer     acl.Peer
-		Resource acl.Resource
-		Cell     acl.MatrixCell
-	}
-	rows := []row{}
-	access := map[int64][]string{}
-	// ponytail: a direct join is enough for small admin tables; index peers/resources if this view grows slow.
-	for _, cell := range v.Matrix {
-		for _, p := range v.Peers {
-			if p.ID == cell.PeerID {
-				for _, res := range v.Resources {
-					if res.ID == cell.ResourceID {
-						rows = append(rows, row{p, res, cell})
-						if cell.Result == "ALLOW" {
-							access[p.ID] = append(access[p.ID], res.Name)
-						}
-					}
-				}
-			}
-		}
-	}
-	data := struct {
-		V      acl.Snapshot
-		S      acl.Status
-		Sync   acl.SyncStatus
-		Rows   []row
-		Access map[int64][]string
-		CSRF   string
-	}{v, st, syncStatus, rows, access, a.csrf}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if e = pageTemplate.Execute(w, data); e != nil {
-		log.Print(e)
-	}
-}
-
-var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{"short": func(s string) string {
-	if len(s) > 18 {
-		return s[:18] + "…"
-	}
-	return s
-}, "port": func(r acl.Resource) string {
-	if r.PortStart == 0 {
-		return "all"
-	}
-	if r.PortStart == r.PortEnd {
-		return strconv.Itoa(r.PortStart)
-	}
-	return fmt.Sprintf("%d-%d", r.PortStart, r.PortEnd)
-}, "group": func(gs []acl.Group, id int64) string {
-	for _, g := range gs {
-		if g.ID == id {
-			return g.Name
-		}
-	}
-	return "?"
-}, "peer": func(ps []acl.Peer, id int64) string {
-	for _, p := range ps {
-		if p.ID == id {
-			return p.Name + " (" + p.IP + ")"
-		}
-	}
-	return "?"
-}, "res": func(rs []acl.Resource, id int64) string {
-	for _, r := range rs {
-		if r.ID == id {
-			return r.Name
-		}
-	}
-	return "?"
-}}).Parse(pageHTML))

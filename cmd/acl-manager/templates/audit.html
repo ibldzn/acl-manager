@@ -1,0 +1,36 @@
+{{define "audit"}}{{template "start" .}}<div class="heading-actions">
+<p class="intro">Recent admin and enforcer events.</p>
+<a href="/api/audit">View raw JSON</a>
+</div>
+<section class="panel table-panel">
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Timestamp</th>
+<th>Actor</th>
+<th>Action</th>
+<th>Target</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>{{range .Audit}}<tr>
+<td class="small-value">{{.At}}</td>
+<td>{{.Actor}}</td>
+<td>
+<strong>{{.Action}}</strong>
+</td>
+<td>{{.Target}}</td>
+<td>{{if or .Before .After .Error}}<details>
+<summary>View details</summary>{{if .Error}}<p class="state ERROR">{{.Error}}</p>{{end}}{{if .Before}}<p>Before</p>
+<pre>{{.Before}}</pre>{{end}}{{if .After}}<p>After</p>
+<pre>{{.After}}</pre>{{end}}
+</details>{{else}}—{{end}}
+</td>
+</tr>{{else}}<tr>
+<td colspan="5" class="empty">No audit events yet.</td>
+</tr>{{end}}
+</tbody>
+</table>
+</div>
+</section>{{template "end" .}}{{end}}

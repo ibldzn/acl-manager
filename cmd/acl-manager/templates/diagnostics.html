@@ -1,0 +1,93 @@
+{{define "diagnostics"}}{{template "start" .}}<div class="heading-actions">
+<p class="intro">Enforcer and peer sync state.</p>
+<div class="inline-actions">
+<form method="post" action="/retry">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<button>Reconcile / retry</button>
+</form>
+<a href="/api/diagnostics">View raw JSON</a>
+</div>
+</div>
+<section class="panel">
+<h2>Enforcement</h2>
+<dl class="facts">
+<div>
+<dt>State</dt>
+<dd class="state {{.S.State}}">{{.S.State}}</dd>
+</div>
+<div>
+<dt>Desired revision</dt>
+<dd>{{.V.Desired.Revision}}</dd>
+</div>
+<div>
+<dt>Applied revision</dt>
+<dd>{{.S.AppliedRevision}}</dd>
+</div>
+<div class="full">
+<dt>Desired checksum</dt>
+<dd>
+<code class="wrap">{{.V.Desired.Checksum}}</code>
+</dd>
+</div>
+<div class="full">
+<dt>Applied checksum</dt>
+<dd>
+<code class="wrap">{{.S.Checksum}}</code>
+</dd>
+</div>
+<div>
+<dt>Current chain</dt>
+<dd>{{if .S.Chain}}{{.S.Chain}}{{else}}None{{end}}
+</dd>
+</div>
+<div>
+<dt>Anchor present</dt>
+<dd>{{if .S.AnchorPresent}}Yes{{else}}No{{end}}
+</dd>
+</div>
+<div>
+<dt>Before wg-easy ACCEPT</dt>
+<dd>{{if .S.AnchorBeforeAccept}}Yes{{else}}No{{end}}
+</dd>
+</div>
+<div>
+<dt>Last attempt</dt>
+<dd>{{if .S.LastAttempt}}{{.S.LastAttempt}}{{else}}Never{{end}}
+</dd>
+</div>
+<div>
+<dt>Last success</dt>
+<dd>{{if .S.LastSuccess}}{{.S.LastSuccess}}{{else}}Never{{end}}
+</dd>
+</div>
+<div>
+<dt>Heartbeat</dt>
+<dd>{{if .S.Heartbeat}}{{.S.Heartbeat}}{{else}}Never{{end}}
+</dd>
+</div>
+<div class="full">
+<dt>Last error</dt>
+<dd>{{if .S.LastError}}<span class="state ERROR">{{.S.LastError}}</span>{{else}}None{{end}}
+</dd>
+</div>
+</dl>
+</section>
+<section class="panel">
+<h2>Peer sync</h2>
+<dl class="facts">
+<div>
+<dt>State</dt>
+<dd class="state {{.Sync.State}}">{{.Sync.State}}</dd>
+</div>
+<div>
+<dt>Last sync</dt>
+<dd>{{if .Sync.At}}{{.Sync.At}}{{else}}Never{{end}}
+</dd>
+</div>
+<div class="full">
+<dt>Error</dt>
+<dd>{{if .Sync.Error}}{{.Sync.Error}}{{else}}None{{end}}
+</dd>
+</div>
+</dl>
+</section>{{template "end" .}}{{end}}

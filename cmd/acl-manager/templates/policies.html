@@ -1,0 +1,132 @@
+{{define "policies"}}{{template "start" .}}<p class="intro">DENY overrides ALLOW. Enabled resources default to DENY without a matching rule.</p>
+<div class="tabs" role="navigation" aria-label="Policy views">
+<a href="/policies" {{if not .Effective}}aria-current="page"{{end}}>Policy Rules</a>
+<a href="/policies?view=effective" {{if .Effective}}aria-current="page"{{end}}>Effective Access</a>
+</div>
+{{if .Effective}}<section class="panel">
+<div class="section-head">
+<div>
+<h2>Effective Access</h2>
+<p class="muted">Can a peer reach a resource, and why?</p>
+</div>
+</div>
+<form method="get" action="/policies" class="filter-form">
+<input type="hidden" name="view" value="effective">
+<label>Peer<select name="peer">
+<option value="">All peers</option>{{range .V.Peers}}<option value="{{.ID}}" {{if eq $.FilterPeer (printf "%d" .ID)}}selected{{end}}>{{if .Name}}{{.Name}}{{else}}{{.IP}}{{end}}
+</option>{{end}}
+</select>
+</label>
+<label>Resource<select name="resource">
+<option value="">All resources</option>{{range .V.Resources}}<option value="{{.ID}}" {{if eq $.FilterResource (printf "%d" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
+</select>
+</label>
+<label>Result<select name="result">
+<option value="">All results</option>
+<option value="ALLOW" {{if eq .FilterResult "ALLOW"}}selected{{end}}>ALLOW</option>
+<option value="DENY" {{if eq .FilterResult "DENY"}}selected{{end}}>DENY</option>
+<option value="UNMANAGED" {{if eq .FilterResult "UNMANAGED"}}selected{{end}}>UNMANAGED</option>
+</select>
+</label>
+<button class="secondary">Filter</button>
+</form>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Peer</th>
+<th>Resource</th>
+<th>Effective result</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>{{range .Rows}}<tr>
+<td>
+<strong>{{if .Peer.Name}}{{.Peer.Name}}{{else}}{{.Peer.IP}}{{end}}
+</strong>
+<div class="muted">{{.Peer.IP}}</div>
+</td>
+<td>{{.Resource.Name}}</td>
+<td>
+<span class="state {{.Cell.Result}}">{{.Cell.Result}}</span>
+</td>
+<td>{{.Cell.Reason}}</td>
+</tr>{{else}}<tr>
+<td colspan="4" class="empty">No matching access entries.</td>
+</tr>{{end}}
+</tbody>
+</table>
+</div>
+</section>
+{{else}}<div class="split">
+<section class="panel table-panel">
+<div class="section-head">
+<h2>Policy Rules</h2>
+<span class="muted">{{len .V.Policies}} configured</span>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Subject</th>
+<th>Type</th>
+<th>Resource</th>
+<th>Action</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>{{range .V.Policies}}<tr>
+<td>
+<strong>{{if .PeerID}}{{peer $.V.Peers .PeerID}}{{else}}{{group $.V.Groups .GroupID}}{{end}}
+</strong>
+</td>
+<td>{{if .PeerID}}Peer{{else}}Group{{end}}
+</td>
+<td>{{resource $.V.Resources .ResourceID}}</td>
+<td>
+<span class="state {{.Action}}">{{.Action}}</span>
+</td>
+<td>
+<form method="post" action="/policies/delete">
+<input type="hidden" name="csrf" value="{{$.CSRF}}">
+<input type="hidden" name="id" value="{{.ID}}">
+<button class="text-button danger-text">Remove</button>
+</form>
+</td>
+</tr>{{else}}<tr>
+<td colspan="5" class="empty">No explicit rules.</td>
+</tr>{{end}}
+</tbody>
+</table>
+</div>
+</section>
+<aside class="panel side-panel">
+<h2>Set policy</h2>
+<p class="muted">Saving same subject and resource updates existing rule.</p>{{if .V.Resources}}<form method="post" action="/policies/save" class="stack-form" id="policy-form">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<label>Subject type<select id="subject-type">
+<option value="peer">Peer</option>
+<option value="group">Group</option>
+</select>
+</label>
+<label id="peer-subject">Subject<select name="peer_id">{{range .V.Peers}}<option value="{{.ID}}">{{if .Name}}{{.Name}}{{else}}{{.IP}}{{end}} ({{.IP}})</option>{{end}}
+</select>
+<input type="hidden" name="peer_id" value="0">
+</label>
+<label id="group-subject" hidden>Subject<select name="group_id" disabled>{{range .V.Groups}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+</select>
+<input type="hidden" name="group_id" value="0">
+</label>
+<label>Resource<select name="resource_id">{{range .V.Resources}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+</select>
+</label>
+<label>Action<select name="action">
+<option value="ALLOW">ALLOW</option>
+<option value="DENY">DENY</option>
+</select>
+</label>
+<button>Save rule</button>
+</form>
+<script>const t=document.getElementById('subject-type');t.addEventListener('change',()=>{for(const [id,on] of [['peer-subject',t.value==='peer'],['group-subject',t.value==='group']]){const e=document.getElementById(id);e.hidden=!on;e.querySelector('select').disabled=!on}})</script>{{else}}<p>Add a resource before creating rules.</p>{{end}}
+</aside>
+</div>{{end}}{{template "end" .}}{{end}}
