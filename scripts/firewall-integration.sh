@@ -8,6 +8,7 @@ trap 'rm -rf "$tmp"' EXIT
 cp internal/acl/testdata/desired.json "$tmp/desired.json"
 docker build -t "$image" .
 docker run --rm --network none --cap-drop ALL --cap-add NET_ADMIN \
+  --cap-add NET_RAW \
   -v "$tmp:/state:Z" --entrypoint /bin/sh "$image" -ceu '
   iptables-legacy -A FORWARD -i wg0 -j ACCEPT
   iptables-legacy -A FORWARD -o wg0 -j ACCEPT

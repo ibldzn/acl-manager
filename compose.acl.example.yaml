@@ -31,7 +31,7 @@ services:
     read_only: true
     tmpfs: ["/tmp", "/run"]
     cap_drop: [ALL]
-    cap_add: [NET_ADMIN]
+    cap_add: [NET_ADMIN, NET_RAW]
     security_opt: ["no-new-privileges:true"]
     network_mode: "container:wg-easy"
     restart: always
