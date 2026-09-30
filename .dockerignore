@@ -1,0 +1,5 @@
+.git
+state
+secrets
+*.db
+*.db-journal

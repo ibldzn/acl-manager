@@ -1,0 +1,14 @@
+[Unit]
+Description=Rejoin ACL enforcer to wg-easy network namespace
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=simple
+# Change this path to the repository checkout on the deployment host.
+ExecStart=/opt/acl-manager/scripts/watch-wg-easy.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

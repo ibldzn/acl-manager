@@ -1,0 +1,1 @@
+{"revision":1,"activated":true,"checksum":"de5b5c60f530bf4d8d45789dd23aac82e30e0e557a0752b93f20efc121d03e5d","rules":[{"destination":"172.20.57.245/32","protocol":"tcp","port_start":3306,"port_end":3306,"action":"DROP"}]}

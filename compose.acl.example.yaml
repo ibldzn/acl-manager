@@ -1,0 +1,49 @@
+# Add these services next to the existing wg-easy deployment. This file does
+# not create or replace wg-easy; update WG_EASY_URL for its reachable admin API.
+services:
+  acl-web:
+    build: .
+    user: "10001:10001"
+    read_only: true
+    tmpfs: ["/tmp"]
+    restart: unless-stopped
+    environment:
+      ACL_LISTEN: "0.0.0.0:8080"
+      ACL_STATE_DIR: /state
+      ACL_ADMIN_USER: ${ACL_ADMIN_USER:-admin}
+      ACL_ADMIN_PASSWORD_FILE: /run/secrets/acl_admin_password
+      WG_EASY_URL: ${WG_EASY_URL:-http://host.docker.internal:51821}
+      WG_EASY_API_VERSION: ${WG_EASY_API_VERSION:-15}
+      WG_EASY_USER: ${WG_EASY_USER:-}
+      WG_EASY_PASSWORD_FILE: /run/secrets/wg_easy_password
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    secrets: [acl_admin_password, wg_easy_password]
+    volumes:
+      - acl-state:/state
+    ports:
+      - "127.0.0.1:8080:8080"
+    command: ["web"]
+
+  acl-enforcer:
+    build: .
+    user: "0:0"
+    read_only: true
+    tmpfs: ["/tmp", "/run"]
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: ["no-new-privileges:true"]
+    network_mode: "container:wg-easy"
+    restart: always
+    volumes:
+      - acl-state:/state
+    command: ["enforcer"]
+
+volumes:
+  acl-state:
+
+secrets:
+  acl_admin_password:
+    file: ./secrets/acl_admin_password
+  wg_easy_password:
+    file: ./secrets/wg_easy_password
